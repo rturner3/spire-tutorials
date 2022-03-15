@@ -1,0 +1,6 @@
+endpoints:
+  grpc:
+    address: 192.168.60.10
+    port: 9999
+spire:
+  agentAddr: unix:///run/spire-agent/public/api.sock

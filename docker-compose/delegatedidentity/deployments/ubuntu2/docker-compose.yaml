@@ -1,0 +1,83 @@
+version: "3.9"
+services:
+  spire-agent:
+    image: gcr.io/spiffe-io/spire-agent:1.2.1
+    volumes:
+    - /run/spire-agent:/run/spire-agent
+    - /etc/spire-agent:/etc/spire-agent
+    - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint:
+    - "/usr/bin/dumb-init"
+    - "/opt/spire/bin/spire-agent"
+    - "run"
+    - "-config"
+    - "/etc/spire-agent/spire-agent.conf"
+    healthcheck:
+      test:
+      - "CMD-SHELL"
+      - "/opt/spire/bin/spire-agent healthcheck -socketPath /run/spire-agent/public/api.sock"
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    network_mode: "host"
+    pid: "host"
+    restart: always
+  proxy:
+    image: proxy
+    depends_on:
+    - spire_agent
+    labels:
+      org.example.service: proxy
+    volumes:
+    - /run/spire-agent:/run/spire-agent
+    - /delegatedidentity/configs/proxy:/etc/proxy
+    - /run/proxy:/run/proxy
+    - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test:
+      - "CMD-SHELL"
+      - "if [ -e /run/proxy/api.sock ]; then exit 0; else exit 1; fi"
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    network_mode: "host"
+    pid: "host"
+  caller1:
+    image: caller
+    labels:
+      org.example.service: caller1
+    depends_on:
+      spire-agent:
+        condition: service_healthy
+      proxy:
+        condition: service_healthy
+    volumes:
+    - /run/spire-agent/public:/run/spire-agent/public
+    - /delegatedidentity/configs/caller1:/etc/caller
+    - /run/proxy:/run/proxy
+  caller2:
+    image: caller
+    labels:
+      org.example.service: caller2
+    depends_on:
+      spire-agent:
+        condition: service_healthy
+      proxy:
+        condition: service_healthy
+    volumes:
+    - /run/spire-agent/public:/run/spire-agent/public
+    - /delegatedidentity/configs/caller2:/etc/caller
+    - /run/proxy:/run/proxy
+  caller3:
+    image: caller
+    labels:
+      org.example.service: caller3
+    depends_on:
+      spire-agent:
+        condition: service_healthy
+      proxy:
+        condition: service_healthy
+    volumes:
+    - /run/spire-agent/public:/run/spire-agent/public
+    - /delegatedidentity/configs/caller3:/etc/caller
+    - /run/proxy:/run/proxy

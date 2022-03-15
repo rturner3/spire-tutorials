@@ -1,0 +1,3 @@
+serviceName: caller3
+outbounds:
+  proxy: unix:///run/proxy/api.sock

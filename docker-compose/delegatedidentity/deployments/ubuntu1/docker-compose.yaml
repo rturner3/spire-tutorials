@@ -1,0 +1,66 @@
+version: "3.9"
+services:
+  spire-server:
+    image: gcr.io/spiffe-io/spire-server:1.2.1
+    ports:
+    - "8081:8081"
+    volumes:
+    - /run/spire-server:/run/spire-server
+    - /etc/spire-server:/etc/spire-server
+    - /var/lib/spire-server:/var/lib/spire-server
+    entrypoint:
+    - "/usr/bin/dumb-init"
+    - "/opt/spire/bin/spire-server"
+    - "run"
+    - "-config"
+    - "/etc/spire-server/spire-server.conf"
+    healthcheck:
+      test:
+      - "CMD-SHELL"
+      - "/opt/spire/bin/spire-server healthcheck -socketPath /run/spire-server/private/api.sock"
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+  spire-registrant:
+    image: spire-registrant
+    depends_on:
+    - spire-server
+    volumes:
+    - /run/spire-server/private:/run/spire-server/private
+  spire-agent:
+    image: gcr.io/spiffe-io/spire-agent:1.2.1
+    depends_on:
+      spire-server:
+        condition: service_healthy
+    volumes:
+    - /run/spire-agent:/run/spire-agent
+    - /etc/spire-agent:/etc/spire-agent
+    - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint:
+    - "/usr/bin/dumb-init"
+    - "/opt/spire/bin/spire-agent"
+    - "run"
+    - "-config"
+    - "/etc/spire-agent/spire-agent.conf"
+    healthcheck:
+      test:
+      - "CMD-SHELL"
+      - "/opt/spire/bin/spire-agent healthcheck -socketPath /run/spire-agent/public/api.sock"
+      timeout: 5s
+      retries: 10
+    network_mode: "host"
+    pid: "host"
+    restart: always
+  callee:
+    image: callee
+    labels:
+      org.example.service: callee
+    depends_on:
+    - spire-agent
+    - spire-registrant
+    ports:
+    - "9999:9999"
+    volumes:
+    - /run/spire-agent/public:/run/spire-agent/public
+    - /delegatedidentity/configs/callee:/etc/callee
+    network_mode: "host"

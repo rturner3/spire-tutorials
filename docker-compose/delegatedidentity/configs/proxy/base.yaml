@@ -1,0 +1,5 @@
+backend: 192.168.60.10:9999
+listenSocketPath: /run/proxy/api.sock
+spire:
+  agentSocketPath: unix:///run/spire-agent/private/admin_api.sock
+  trustDomain: spiffe://example.org
